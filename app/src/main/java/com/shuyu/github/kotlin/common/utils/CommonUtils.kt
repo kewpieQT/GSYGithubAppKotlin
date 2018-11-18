@@ -1,15 +1,22 @@
 package com.shuyu.github.kotlin.common.utils
 
+import android.content.Context
 import android.graphics.Point
 import android.widget.ImageView
+import androidx.core.net.toUri
 import com.shuyu.github.kotlin.GSYGithubApplication
 import com.shuyu.github.kotlin.R
 import com.shuyu.github.kotlin.common.config.AppConfig
 import com.shuyu.github.kotlin.common.style.image.BlurTransformation
+import com.shuyu.github.kotlin.module.image.ImagePreViewActivity
+import com.shuyu.github.kotlin.module.person.PersonActivity
+import com.shuyu.github.kotlin.module.repos.ReposDetailActivity
 import com.shuyu.gsyimageloader.GSYImageLoaderManager
 import com.shuyu.gsyimageloader.GSYLoadOption
+import org.jetbrains.anko.browse
 import java.text.SimpleDateFormat
 import java.util.*
+
 
 /**
  * 通用工具类
@@ -95,5 +102,57 @@ object CommonUtils {
     fun getFileHtmlUrl(userName: String, reposName: String, path: String, branch: String = "master"): String =
             AppConfig.GITHUB_BASE_URL + userName + "/" + reposName + "/blob/" + branch + "/" + path
 
+    fun getCommitHtmlUrl(userName: String, reposName: String, sha: String): String =
+            AppConfig.GITHUB_BASE_URL + userName + "/" + reposName + "/commit/" + sha
+
+
+    fun launchUrl(context: Context, url: String?) {
+        if (url == null || url.isEmpty()) return
+        val parseUrl = url.toUri()
+        var isImage = isImageEnd(parseUrl.toString())
+        if (parseUrl.toString().endsWith("?raw=true")) {
+            isImage = isImageEnd(parseUrl.toString().replace("?raw=true", ""))
+        }
+        if (isImage) {
+            var imageUrl = url
+            if (!parseUrl.toString().endsWith("?raw=true")) {
+                imageUrl = "$url?raw=true"
+            }
+            ImagePreViewActivity.gotoImagePreView(imageUrl)
+            return
+        }
+
+        if (parseUrl.host == "github.com" && parseUrl.path.isNotEmpty()) {
+            val pathNames = parseUrl.path.split("/")
+            if (pathNames.size == 2) {
+                //解析人
+                val userName = pathNames[1]
+                PersonActivity.gotoPersonInfo(userName)
+            } else if (pathNames.size >= 3) {
+                val userName = pathNames[1]
+                val repoName = pathNames[2]
+                //解析仓库
+                if (pathNames.size == 3) {
+                    ReposDetailActivity.gotoReposDetail(userName, repoName)
+                } else {
+                    context.browse(url)
+                }
+            }
+        } else if (url.startsWith("http")) {
+            context.browse(url)
+        }
+    }
+
+    private val sImageEndTag = arrayListOf(".png", ".jpg", ".jpeg", ".gif", ".svg")
+
+    fun isImageEnd(path: String): Boolean {
+        var image = false
+        sImageEndTag.forEach {
+            if (path.indexOf(it) + it.length == path.length) {
+                image = true
+            }
+        }
+        return image
+    }
 
 }

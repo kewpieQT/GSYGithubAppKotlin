@@ -14,8 +14,8 @@ android {
         applicationId "com.shuyu.github.kotlin"
         minSdkVersion 21
         targetSdkVersion 27
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 3
+        versionName "1.0.2"
         javaCompileOptions {
             annotationProcessorOptions {
                 includeCompileClasspath = true
@@ -197,4 +197,11 @@ dependencies {
 
     ///bugly
     implementation "com.tencent.bugly:crashreport:${bugly_version}"
+
+    ///PHOTO VIEW
+    implementation "com.github.chrisbanes:PhotoView:${photoview_version}"
+
+
+    implementation "com.github.hotchemi:permissionsdispatcher:${permission_version}"
+    kapt "com.github.hotchemi:permissionsdispatcher-processor:${permission_version}"
 }

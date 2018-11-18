@@ -6,6 +6,8 @@ import com.shuyu.github.kotlin.R
 import com.shuyu.github.kotlin.common.utils.CommonUtils
 import com.shuyu.github.kotlin.model.bean.Event
 import com.shuyu.github.kotlin.model.bean.Notification
+import com.shuyu.github.kotlin.model.bean.RepoCommit
+import com.shuyu.github.kotlin.model.ui.CommitUIModel
 import com.shuyu.github.kotlin.model.ui.EventUIAction
 import com.shuyu.github.kotlin.model.ui.EventUIModel
 
@@ -158,20 +160,18 @@ object EventConversion {
                     }
                     event.payload?.commits?.size == 1 -> {
                         eventUIModel.actionType = EventUIAction.Push
-                        eventUIModel.pushSha = event.payload?.commits?.get(0)?.sha ?: ""
-                        //NavigatorUtils.goPushDetailPage(context, owner, repositoryName, event.payload.commits[0].sha, true);
+                        eventUIModel.pushSha.clear()
+                        eventUIModel.pushSha.add(event.payload?.commits?.get(0)?.sha ?: "")
                     }
                     else -> {
                         eventUIModel.actionType = EventUIAction.Push
-                        //todo 选择提交item
-                        //eventUIModel.pushSha = event.payload?.commits?.get(0)?.sha ?:""
-                        /*List<String> list = new List();
-                            for (int i = 0; i < event.payload.commits.length; i++) {
-                                list.add(event.payload.commits[i].message + " " + event.payload.commits[i].sha.substring(0, 4));
+                        eventUIModel.pushSha.clear()
+                        event.payload?.commits?.apply {
+                            forEach {
+                                eventUIModel.pushSha.add(it.sha ?: "")
+                                eventUIModel.pushShaDes.add(it.message ?: "")
                             }
-                            CommonUtils.showCommitOptionDialog(context, list, (index) {
-                                NavigatorUtils.goPushDetailPage(context, owner, repositoryName, event.payload.commits[index].sha, true);
-                            });*/
+                        }
                     }
                 }
             }
@@ -222,5 +222,14 @@ object EventConversion {
         eventUIModel.threadId = notification.id ?: ""
 
         return eventUIModel
+    }
+
+    fun commitToCommitUIModel(repoCommit: RepoCommit): CommitUIModel {
+        val commitUIModel = CommitUIModel()
+        commitUIModel.time = CommonUtils.getNewsTimeStr(repoCommit.commit?.committer?.date)
+        commitUIModel.userName = repoCommit.commit?.committer?.name ?: ""
+        commitUIModel.sha = repoCommit.sha ?: ""
+        commitUIModel.des = repoCommit.commit?.message ?: ""
+        return commitUIModel
     }
 }

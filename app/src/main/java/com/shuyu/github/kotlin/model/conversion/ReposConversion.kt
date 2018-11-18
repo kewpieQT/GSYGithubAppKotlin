@@ -3,11 +3,12 @@ package com.shuyu.github.kotlin.model.conversion
 import android.content.Context
 import com.shuyu.github.kotlin.R
 import com.shuyu.github.kotlin.common.utils.CommonUtils
-import com.shuyu.github.kotlin.model.bean.FileModel
-import com.shuyu.github.kotlin.model.bean.Repository
-import com.shuyu.github.kotlin.model.bean.TrendingRepoModel
+import com.shuyu.github.kotlin.common.utils.HtmlUtils
+import com.shuyu.github.kotlin.model.bean.*
 import com.shuyu.github.kotlin.model.ui.FileUIModel
+import com.shuyu.github.kotlin.model.ui.PushUIModel
 import com.shuyu.github.kotlin.model.ui.ReposUIModel
+
 
 /**
  * 仓库相关实体转换
@@ -81,4 +82,39 @@ object ReposConversion {
         return result
     }
 
+    fun pushInfoToPushUIModel(commit: RepoCommitExt): PushUIModel {
+        val pushUIModel = PushUIModel()
+        var name = "---"
+        var pic = "---"
+        if (commit.committer != null) {
+            name = commit.committer?.login ?: ""
+        } else if (commit.commit != null && commit.commit?.author != null) {
+            name = commit.commit?.author?.name ?: ""
+        }
+        if (commit.committer != null && commit.committer?.avatarUrl != null) {
+            pic = commit.committer?.avatarUrl ?: ""
+        }
+        pushUIModel.pushUserName = name
+        pushUIModel.pushImage = pic
+        pushUIModel.pushDes = "Push at " + commit.commit?.message
+        pushUIModel.pushTime = CommonUtils.getNewsTimeStr(commit.commit?.committer?.date)
+        pushUIModel.pushEditCount = commit.files?.size?.toString() ?: ""
+        pushUIModel.pushAddCount = commit.stats?.additions?.toString() ?: ""
+        pushUIModel.pushReduceCount = commit.stats?.deletions?.toString() ?: ""
+        return pushUIModel
+    }
+
+    fun repoCommitToFileUIModel(context: Context, commit: CommitFile): FileUIModel {
+        val fileUIModel = FileUIModel()
+        val filename = commit.fileName ?: ""
+        val nameSplit = filename.split("/".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        fileUIModel.title = nameSplit[nameSplit.size - 1]
+        fileUIModel.dir = filename
+        fileUIModel.icon = "{GSY-REPOS_ITEM_FILE}"
+
+        val html = HtmlUtils.generateCode2HTml(context, HtmlUtils.parseDiffSource(commit.patch
+                ?: "", false), R.color.webDraculaBackgroundColor, "")
+        fileUIModel.patch = html
+        return fileUIModel
+    }
 }

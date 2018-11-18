@@ -13,8 +13,10 @@ import com.shuyu.github.kotlin.model.conversion.EventConversion
 import com.shuyu.github.kotlin.model.conversion.IssueConversion
 import com.shuyu.github.kotlin.model.conversion.ReposConversion
 import com.shuyu.github.kotlin.model.conversion.TrendConversion
+import com.shuyu.github.kotlin.model.ui.PushUIModel
 import com.shuyu.github.kotlin.model.ui.ReposUIModel
 import com.shuyu.github.kotlin.repository.dao.ReposDao
+import com.shuyu.github.kotlin.service.CommitService
 import com.shuyu.github.kotlin.service.IssueService
 import com.shuyu.github.kotlin.service.RepoService
 import com.shuyu.github.kotlin.service.SearchService
@@ -41,7 +43,7 @@ class ReposRepository @Inject constructor(private val retrofit: Retrofit, privat
      */
     fun checkoutUpDate(context: Context, resultCallBack: ResultCallBack<Release>?) {
         val service = retrofit.create(RepoService::class.java)
-                .getReleases(true, "CarGuo", "GSYGithubAppKotlin", 1)
+                .getReleasesNotHtml(true, "CarGuo", "GSYGithubAppKotlin", 1)
                 .flatMap {
                     FlatMapResponse2Result(it)
                 }.map {
@@ -295,6 +297,60 @@ class ReposRepository @Inject constructor(private val retrofit: Retrofit, privat
 
         })
     }
+
+    fun getReposCommits(userName: String, reposName: String, resultCallBack: ResultCallBack<ArrayList<Any>>?, page: Int = 1) {
+
+        val dbService = reposDao.getReposCommitDao(userName, reposName)
+                .doOnNext {
+                    if (page == 1) {
+                        resultCallBack?.onCacheSuccess(it)
+                    }
+                }
+
+        val eventService = retrofit.create(CommitService::class.java).getRepoCommits(true, userName, reposName, page)
+                .doOnNext {
+                    reposDao.saveReposCommitDao(it, userName, reposName, page == 1)
+                }
+                .flatMap {
+                    FlatMapResponse2ResponseResult(it, object : FlatConversionInterface<ArrayList<RepoCommit>> {
+                        override fun onConversion(t: ArrayList<RepoCommit>?): ArrayList<Any> {
+                            val list = ArrayList<Any>()
+                            t?.apply {
+                                for (item in t) {
+                                    list.add(EventConversion.commitToCommitUIModel(item))
+                                }
+                            }
+                            return list
+                        }
+                    })
+                }
+
+        val zipService = Observable.zip(dbService, eventService,
+                BiFunction<ArrayList<Any>, Response<ArrayList<Any>>, Response<ArrayList<Any>>> { _, remote ->
+                    remote
+                })
+
+        RetrofitFactory.executeResult(zipService, object : ResultTipObserver<ArrayList<Any>>(application) {
+
+            override fun onPageInfo(first: Int, current: Int, last: Int) {
+                resultCallBack?.onPage(first, current, last)
+            }
+
+            override fun onSuccess(result: ArrayList<Any>?) {
+                resultCallBack?.onSuccess(result)
+            }
+
+            override fun onCodeError(code: Int, message: String) {
+                resultCallBack?.onFailure()
+            }
+
+            override fun onFailure(e: Throwable, isNetWorkError: Boolean) {
+                resultCallBack?.onFailure()
+            }
+
+        })
+    }
+
 
 
     /**
@@ -595,6 +651,40 @@ class ReposRepository @Inject constructor(private val retrofit: Retrofit, privat
                 }
 
         reposListRequest(dbService, netService, resultCallBack, page)
+    }
+
+    /**
+     * 获取提交详情
+     */
+    fun getPushDetailInfo(userName: String, reposName: String, sha: String, resultCallBack: ResultCallBack<PushUIModel>?, listCallBack: ResultCallBack<ArrayList<Any>>?) {
+        val service = retrofit.create(CommitService::class.java).getCommitInfo(true, userName, reposName, sha)
+                .flatMap {
+                    FlatMapResponse2Result(it)
+                }.map {
+                    resultCallBack?.onSuccess(ReposConversion.pushInfoToPushUIModel(it))
+                    it
+                }.map {
+                    val list = arrayListOf<Any>()
+                    it.files?.apply {
+                        forEach {
+                            list.add(ReposConversion.repoCommitToFileUIModel(application, it))
+                        }
+                    }
+                    list
+                }.flatMap {
+                    FlatMapResult2Response(it)
+                }
+
+        RetrofitFactory.executeResult(service, object : ResultTipObserver<ArrayList<Any>>(application) {
+            override fun onSuccess(result: ArrayList<Any>?) {
+                listCallBack?.onSuccess(result)
+            }
+
+            override fun onFailure(e: Throwable, isNetWorkError: Boolean) {
+                resultCallBack?.onFailure()
+                listCallBack?.onFailure()
+            }
+        })
     }
 
     /**

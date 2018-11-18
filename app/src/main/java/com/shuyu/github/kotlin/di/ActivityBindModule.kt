@@ -8,6 +8,7 @@ import com.shuyu.github.kotlin.module.list.GeneralListActivity
 import com.shuyu.github.kotlin.module.main.MainActivity
 import com.shuyu.github.kotlin.module.notify.NotifyActivity
 import com.shuyu.github.kotlin.module.person.PersonActivity
+import com.shuyu.github.kotlin.module.push.PushDetailActivity
 import com.shuyu.github.kotlin.module.repos.ReposDetailActivity
 import com.shuyu.github.kotlin.module.search.SearchActivity
 import dagger.Module
@@ -59,6 +60,10 @@ abstract class ActivityBindModule {
 
     @ActivityScope
     @ContributesAndroidInjector(modules = [NotifyFragmentBindModule::class])
-    abstract fun generalNotifyActivityInjector(): NotifyActivity
+    abstract fun notifyActivityInjector(): NotifyActivity
+
+    @ActivityScope
+    @ContributesAndroidInjector(modules = [PushDetailFragmentBindModule::class])
+    abstract fun pushDetailActivityInjector(): PushDetailActivity
 
 }
